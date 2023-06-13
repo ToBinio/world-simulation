@@ -1,5 +1,6 @@
 //! Shows how to render simple primitive shapes with a single color.
 
+use std::time::Duration;
 use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use rand::{thread_rng, Rng};
@@ -12,9 +13,12 @@ fn main() {
         .add_startup_system(setup_chickens)
         .add_startup_system(setup_fps_text)
         .add_system(move_chickens)
-        .add_system(check_for_boarder)
+        .add_system(select_new_target)
+        .add_system(spawn_eggs)
+        .add_system(hatch_eggs)
         .add_system(flip_sprite)
         .add_system(update_fps)
+        .add_system(grow_chickens)
         .run();
 }
 
@@ -49,78 +53,148 @@ fn setup_camera(mut commands: Commands) {
 fn setup_chickens(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut rng = thread_rng();
 
-    for _ in 0..10000 {
+    for _ in 0..5 {
         commands.spawn((
             SpriteBundle {
                 texture: asset_server.load("Chicken.png"),
                 transform: Transform::from_scale(Vec3::new(10., 10., 0.)),
                 ..default()
             },
-            Direction {
-                direction: Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0))
-                    .normalize(),
+            Target {
+                target: Vec2::new(rng.gen_range(-500.0..500.0), rng.gen_range(-500.0..500.0)),
             },
+            EggSpawnTimer {
+                timer: Timer::new(Duration::from_secs(10), TimerMode::Repeating)
+            },
+            Chicken {
+                state: ChickenState::Adult
+            }
         ));
     }
 }
 
 #[derive(Component)]
-struct Direction {
-    direction: Vec2,
+struct Target {
+    target: Vec2,
 }
 
-fn move_chickens(mut chickens: Query<(&mut Transform, &Direction)>, time: Res<Time>) {
+#[derive(Component)]
+struct EggSpawnTimer {
+    timer: Timer,
+}
 
+#[derive(Component)]
+struct EggHatchTimer {
+    timer: Timer,
+}
+
+#[derive(Component)]
+struct Chicken {
+    state: ChickenState,
+}
+
+#[derive(Component)]
+enum ChickenState {
+    Child(Timer),
+    Adult,
+}
+
+fn move_chickens(mut chickens: Query<(&mut Transform, &Target)>, time: Res<Time>) {
     for (mut transform, direction) in &mut chickens {
         let translate = &mut transform.translation;
 
-        translate.x += direction.direction.x * 100.0 * time.delta_seconds();
-        translate.y += direction.direction.y * 100.0 * time.delta_seconds();
+        let angle = (direction.target.y - translate.y).atan2(direction.target.x - translate.x);
+
+        translate.x += angle.cos() * 100.0 * time.delta_seconds();
+        translate.y += angle.sin() * 100.0 * time.delta_seconds();
     }
 }
 
-fn check_for_boarder(
-    mut chickens: Query<(&mut Transform, &mut Direction)>,
-    windows: Query<&Window>,
-) {
-    let window = windows.single();
 
-    let max_width: f32 = window.width() / 2.;
-    let max_height: f32 = window.height() / 2.;
+fn select_new_target(mut entities: Query<(&Transform, &mut Target)>) {
+    let mut rng = thread_rng();
 
-    for (mut transform, mut direction) in &mut chickens {
-        let translation = &mut transform.translation;
+    for (transform, mut target) in &mut entities {
+        let distance = target.target.distance(Vec2::new(transform.translation.x, transform.translation.y));
 
-        if translation.x > max_width {
-            direction.direction.x = -direction.direction.x;
-            translation.x = max_width;
-        }
-
-        if translation.x < -max_width {
-            direction.direction.x = -direction.direction.x;
-            translation.x = -max_width;
-        }
-
-        if translation.y > max_height {
-            direction.direction.y = -direction.direction.y;
-            translation.y = max_height;
-        }
-
-        if translation.y < -max_height {
-            direction.direction.y = -direction.direction.y;
-            translation.y = -max_height;
+        if distance < 5. {
+            target.target = Vec2::new(rng.gen_range(-500.0..500.0), rng.gen_range(-500.0..500.0));
         }
     }
 }
 
-fn flip_sprite(mut chickens: Query<(&mut Transform, &Direction)>) {
-    for (mut transform, direction) in &mut chickens {
-        if direction.direction.x > 0. && transform.scale.x < 0. {
+fn flip_sprite(mut chickens: Query<(&mut Transform, &Target)>) {
+    for (mut transform, target) in &mut chickens {
+        if target.target.x > transform.translation.x && transform.scale.x < 0. {
             transform.scale.x = -transform.scale.x;
         }
 
-        if direction.direction.x < 0. && transform.scale.x > 0. {
+        if target.target.x < transform.translation.x && transform.scale.x > 0. {
             transform.scale.x = -transform.scale.x;
+        }
+    }
+}
+
+fn spawn_eggs(mut chickens: Query<(&Transform, &mut EggSpawnTimer)>, time: Res<Time>, mut commands: Commands, asset_server: Res<AssetServer>) {
+    for (transform, mut eggTimer) in &mut chickens {
+        eggTimer.timer.tick(time.delta());
+
+        if eggTimer.timer.finished() {
+            commands.spawn((
+                SpriteBundle {
+                    texture: asset_server.load("Egg.png"),
+                    transform: Transform {
+                        translation: transform.translation.clone(),
+                        scale: transform.scale.clone(),
+                        ..default()
+                    },
+                    ..default()
+                },
+                EggHatchTimer {
+                    timer: Timer::new(Duration::from_secs(5), TimerMode::Once)
+                })
+            );
+        }
+    }
+}
+
+fn hatch_eggs(mut eggs: Query<(Entity, &Transform, &mut EggHatchTimer)>, time: Res<Time>, mut commands: Commands, asset_server: Res<AssetServer>) {
+    for (entity, transform, mut egg_timer) in &mut eggs {
+        egg_timer.timer.tick(time.delta());
+
+        if egg_timer.timer.finished() {
+            commands.spawn((
+                SpriteBundle {
+                    texture: asset_server.load("Small_Chicken.png"),
+                    transform: transform.clone(),
+                    ..default()
+                },
+                Target {
+                    target: Vec2::new(transform.translation.x, transform.translation.y),
+                },
+                EggSpawnTimer {
+                    timer: Timer::new(Duration::from_secs(10), TimerMode::Repeating)
+                },
+                Chicken {
+                    state: ChickenState::Child(Timer::new(Duration::from_secs(5), TimerMode::Once))
+                }
+            ));
+
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn grow_chickens(mut chickens: Query<(&mut Handle<Image>, &mut Chicken)>, time: Res<Time>, asset_server: Res<AssetServer>) {
+    for (mut texture, mut chicken) in &mut chickens {
+        if let ChickenState::Child(timer) = &mut chicken.state {
+            timer.tick(time.delta());
+
+            if timer.finished() {
+                chicken.state = ChickenState::Adult;
+
+                *texture = asset_server.load("Chicken.png");
+            }
         }
     }
 }
