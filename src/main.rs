@@ -3,10 +3,10 @@
 mod chicken;
 mod entity;
 
+use crate::chicken::ChickenPlugin;
+use crate::entity::EntityPlugin;
 use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
-use crate::chicken::{ChickenPlugin};
-use crate::entity::{EntityPlugin};
 
 fn main() {
     App::new()

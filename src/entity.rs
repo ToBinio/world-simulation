@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 pub struct EntityPlugin;
 
@@ -11,7 +11,7 @@ impl Plugin for EntityPlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Target {
     pub target: Vec2,
 }
@@ -27,12 +27,13 @@ fn move_entity(mut entities: Query<(&mut Transform, &Target)>, time: Res<Time>) 
     }
 }
 
-
 fn select_new_random_target(mut entities: Query<(&Transform, &mut Target)>) {
     let mut rng = thread_rng();
 
     for (transform, mut target) in &mut entities {
-        let distance = target.target.distance(Vec2::new(transform.translation.x, transform.translation.y));
+        let distance = target
+            .target
+            .distance(Vec2::new(transform.translation.x, transform.translation.y));
 
         if distance < 5. {
             target.target = Vec2::new(rng.gen_range(-500.0..500.0), rng.gen_range(-500.0..500.0));
