@@ -28,7 +28,7 @@ impl ChickenBundle {
         ChickenBundle {
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("Chicken.png"),
-                transform: Transform::from_scale(Vec3::new(10., 10., 0.)),
+                transform: Transform::from_scale(Vec3::new(5., 5., 0.)),
                 ..default()
             },
             chicken_data: ChickenData::default(),

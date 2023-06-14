@@ -1,8 +1,10 @@
 //! Shows how to render simple primitive shapes with a single color.
 
+mod camera;
 mod chicken;
 mod entity;
 
+use crate::camera::move_with_keyboard;
 use crate::chicken::ChickenPlugin;
 use crate::entity::EntityPlugin;
 use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
@@ -17,6 +19,7 @@ fn main() {
         .add_startup_system(setup_camera)
         .add_startup_system(setup_fps_text)
         .add_system(update_fps)
+        .add_system(move_with_keyboard)
         .run();
 }
 
