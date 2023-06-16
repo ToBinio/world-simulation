@@ -1,6 +1,8 @@
-use crate::entity::Target;
-use bevy::prelude::*;
 use std::time::Duration;
+
+use bevy::prelude::*;
+
+use crate::entity::Target;
 
 pub struct ChickenPlugin;
 
@@ -47,7 +49,9 @@ impl ChickenBundle {
             chicken_data: ChickenData {
                 state: ChickenState::Child(Timer::new(Duration::from_secs(5), TimerMode::Once)),
             },
-            target: Target::default(),
+            target: Target {
+                target: Vec2::new(transform.translation.x, transform.translation.y),
+            },
             egg_spawn_timer: EggSpawnTimer::default(),
         }
     }

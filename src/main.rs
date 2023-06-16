@@ -1,14 +1,17 @@
-//! Shows how to render simple primitive shapes with a single color.
+use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
+use bevy::prelude::*;
+use bevy::sprite::MaterialMesh2dBundle;
+
+use crate::camera::CameraPlugin;
+use crate::chicken::ChickenPlugin;
+use crate::entity::EntityPlugin;
 
 mod camera;
 mod chicken;
 mod entity;
 
-use crate::camera::move_with_keyboard;
-use crate::chicken::ChickenPlugin;
-use crate::entity::EntityPlugin;
-use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
-use bevy::prelude::*;
+const MAP_SIZE: f32 = 5000.;
+const HALF_MAP_SIZE: f32 = MAP_SIZE / 2.;
 
 fn main() {
     App::new()
@@ -16,10 +19,11 @@ fn main() {
         .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(ChickenPlugin)
         .add_plugin(EntityPlugin)
-        .add_startup_system(setup_camera)
+        .add_plugin(CameraPlugin)
         .add_startup_system(setup_fps_text)
+        .add_startup_system(setup_camera)
+        .add_startup_system(background)
         .add_system(update_fps)
-        .add_system(move_with_keyboard)
         .run();
 }
 
@@ -49,4 +53,18 @@ fn update_fps(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<Fp
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
+}
+
+fn background(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    commands.spawn(MaterialMesh2dBundle {
+        mesh: meshes
+            .add(shape::Quad::new(Vec2::new(MAP_SIZE, MAP_SIZE)).into())
+            .into(),
+        material: materials.add(ColorMaterial::from(Color::SEA_GREEN)),
+        ..default()
+    });
 }

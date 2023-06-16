@@ -1,47 +1,46 @@
+use bevy::app::{App, Plugin};
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::input::Input;
-use bevy::prelude::{Camera, Camera2d, KeyCode, Query, Res, Transform, With};
-use bevy::time::Time;
+use bevy::prelude::{Camera2d, EventReader, MouseButton, Query, Res, Transform, With};
 
-pub fn move_with_keyboard(
-    input: Res<Input<KeyCode>>,
-    time: Res<Time>,
-    mut transform: Query<&mut Transform, With<Camera2d>>,
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(zoom).add_system(move_with_mouse);
+    }
+}
+
+pub fn zoom(
+    mut inputs: EventReader<MouseWheel>,
+    mut camera_transform: Query<&mut Transform, With<Camera2d>>,
 ) {
-    if input.any_pressed([KeyCode::Left, KeyCode::A]) {
-        let mut transform = transform.single_mut();
+    let mut camera_transform = camera_transform.single_mut();
 
-        transform.translation.x -= 100. * time.delta_seconds();
+    //todo offset on scroll
+
+    for mouse_wheel in inputs.iter() {
+        if mouse_wheel.y < 0. {
+            camera_transform.scale.x *= 1.1;
+            camera_transform.scale.y *= 1.1;
+        } else {
+            camera_transform.scale.x *= 0.9;
+            camera_transform.scale.y *= 0.9;
+        }
     }
+}
 
-    if input.any_pressed([KeyCode::Right, KeyCode::D]) {
-        let mut transform = transform.single_mut();
+pub fn move_with_mouse(
+    mut inputs: EventReader<MouseMotion>,
+    buttons: Res<Input<MouseButton>>,
+    mut camera_transform: Query<&mut Transform, With<Camera2d>>,
+) {
+    let mut camera_transform = camera_transform.single_mut();
 
-        transform.translation.x += 100. * time.delta_seconds();
-    }
-
-    if input.any_pressed([KeyCode::Up, KeyCode::W]) {
-        let mut transform = transform.single_mut();
-
-        transform.translation.y += 100. * time.delta_seconds();
-    }
-
-    if input.any_pressed([KeyCode::Down, KeyCode::S]) {
-        let mut transform = transform.single_mut();
-
-        transform.translation.y -= 100. * time.delta_seconds();
-    }
-
-    if input.pressed(KeyCode::N) {
-        let mut transform = transform.single_mut();
-
-        transform.scale.x *= 1.1;
-        transform.scale.y *= 1.1;
-    }
-
-    if input.pressed(KeyCode::M) {
-        let mut transform = transform.single_mut();
-
-        transform.scale.x *= 0.9;
-        transform.scale.y *= 0.9;
+    for mouse_motion in inputs.iter() {
+        if buttons.any_pressed([MouseButton::Middle, MouseButton::Left]) {
+            camera_transform.translation.x -= mouse_motion.delta.x * camera_transform.scale.x;
+            camera_transform.translation.y += mouse_motion.delta.y * camera_transform.scale.y;
+        }
     }
 }

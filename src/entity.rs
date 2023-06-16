@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use rand::{thread_rng, Rng};
+use crate::HALF_MAP_SIZE;
 
 pub struct EntityPlugin;
 
@@ -36,7 +37,7 @@ fn select_new_random_target(mut entities: Query<(&Transform, &mut Target)>) {
             .distance(Vec2::new(transform.translation.x, transform.translation.y));
 
         if distance < 5. {
-            target.target = Vec2::new(rng.gen_range(-500.0..500.0), rng.gen_range(-500.0..500.0));
+            target.target = Vec2::new(rng.gen_range(-HALF_MAP_SIZE..HALF_MAP_SIZE), rng.gen_range(-HALF_MAP_SIZE..HALF_MAP_SIZE));
         }
     }
 }
